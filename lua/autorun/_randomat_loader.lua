@@ -9,12 +9,24 @@ local function AddClient(fil)
 	if CLIENT then include(fil) end
 end
 
-AddServer("randomat/randomat_base.lua")
+local function AddShared(fil)
+	AddServer(fil)
+	AddClient(fil)
+end
+
+
+AddShared("randomat/randomat_base.lua")
 AddClient("randomat/cl_message.lua")
 AddClient("randomat/cl_networkstrings.lua")
 
 local files, _ = file.Find("randomat/events/*.lua", "LUA")
 
 for _, fil in pairs(files) do
-	AddServer("randomat/events/" .. fil)
+	local is_cl = fil:match("_cl%.lua") ~= nil
+
+	if is_cl then
+		AddClient("randomat/events/" .. fil)
+	else
+		AddServer("randomat/events/" .. fil)
+	end
 end

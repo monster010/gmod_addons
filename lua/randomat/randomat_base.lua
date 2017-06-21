@@ -1,5 +1,3 @@
-util.AddNetworkString("randomat_message")
-
 Randomat.Events = Randomat.Events or {}
 Randomat.MapEvents = Randomat.MapEvents or {}
 Randomat.ActiveEvents = {}
@@ -44,6 +42,10 @@ function Randomat:register(id, tbl)
 	Randomat.Events[id] = tbl
 end
 
+function Randomat:exists(id)
+	return Randomat.Events[id] ~= nil
+end
+
 function Randomat:TriggerRandomEvent(ply)
 	if table.Count(Randomat.MapEvents) == 0 then Randomat.MapEvents = table.Copy(Randomat.Events) end
 	local events = Randomat.MapEvents
@@ -57,25 +59,53 @@ function Randomat:TriggerRandomEvent(ply)
 	Randomat.ActiveEvents[index].Ident = index
 	Randomat.ActiveEvents[index].Owner = ply
 
-	Randomat:EventNotify(Randomat.ActiveEvents[index].Title)
-	Randomat.ActiveEvents[index]:Begin()
+	net.Start("randomat_clevent")
+	net.WriteString(Randomat.ActiveEvents[index].Id)
+	net.Broadcast()
 
-	if Randomat.ActiveEvents[index].Time != nil then
+	Randomat:EventNotify(Randomat.ActiveEvents[index].Title)
+
+	if Randomat.ActiveEvents[index]:Begin() ~= nil then -- Hinzugefügt auf grund der Clientside Events
+		Randomat.ActiveEvents[index]:Begin()
+	end
+
+	if Randomat.ActiveEvents[index].Time ~= nil then
 		timer.Create("Randomat" .. Randomat.ActiveEvents[index].Ident, Randomat.ActiveEvents[index].Time or 60, 1, function()
 			Randomat.ActiveEvents[index]:End()
 			Randomat.ActiveEvents[index]:SmallNotify("The '" .. Randomat.ActiveEvents[index].Title .. "' Event has ended.")
 			Randomat.ActiveEvents[index] = nil
 		end)
 	end
+	
 	Randomat.MapEvents[event.Id] = nil
 end
 
-function Randomat:EventNotify(title)
-	net.Start("randomat_message")
-	net.WriteBool(true)
-	net.WriteString(title)
-	net.WriteUInt(0, 8)
-	net.Broadcast()
+if SERVER then
+	util.AddNetworkString("randomat_message")
+	util.AddNetworkString("randomat_clevent")
+	
+	function Randomat:EventNotify(title)
+		net.Start("randomat_message")
+		net.WriteBool(true)
+		net.WriteString(title)
+		net.WriteUInt(0, 8)
+		net.Broadcast()
+	end
+end
+
+if CLIENT then
+	net.Receive("randomat_clevent", function()
+		local id = net.ReadString()
+	
+		if not Randomat:exists(id) then
+			return
+		end
+
+		/**
+		 * Funktioniert so noch nich müsste auf ActiveEvents zugerifen, bekommt der client aktuell aber nich mitgeteilt, ActiveEvents muss an den client gesendet werden
+		 */
+		Randomat.Events[id]:Begin()
+	end)
 end
 
 /**
@@ -86,6 +116,14 @@ end
 function randomat_meta:GetPlayers(shuffle)
 	return self:GetAlivePlayers(shuffle)
 end
+
+/*function randomat_meta:AddNetworkString(str)
+	util.AddNetworkString("RandomatEvent" .. self.Id .. str)
+end
+
+function randomat_meta:ReveiceNet(str)
+
+end*/
 
 function randomat_meta:GetAlivePlayers(shuffle)
 	local plys = {}

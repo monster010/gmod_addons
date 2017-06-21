@@ -46,43 +46,44 @@ function Randomat:exists(id)
 	return Randomat.Events[id] ~= nil
 end
 
-function Randomat:TriggerRandomEvent(ply)
-	if table.Count(Randomat.MapEvents) == 0 then Randomat.MapEvents = table.Copy(Randomat.Events) end
-	local events = Randomat.MapEvents
-	local index = eventIndex()
-
-	shuffleTable(events)
-
-	local event = table.Random(events)
-
-	Randomat.ActiveEvents[index] = event
-	Randomat.ActiveEvents[index].Ident = index
-	Randomat.ActiveEvents[index].Owner = ply
-
-	net.Start("randomat_clevent")
-	net.WriteString(Randomat.ActiveEvents[index].Id)
-	net.Broadcast()
-
-	Randomat:EventNotify(Randomat.ActiveEvents[index].Title)
-
-	if Randomat.ActiveEvents[index]:Begin() ~= nil then -- Hinzugefügt auf grund der Clientside Events
-		Randomat.ActiveEvents[index]:Begin()
-	end
-
-	if Randomat.ActiveEvents[index].Time ~= nil then
-		timer.Create("Randomat" .. Randomat.ActiveEvents[index].Ident, Randomat.ActiveEvents[index].Time or 60, 1, function()
-			Randomat.ActiveEvents[index]:End()
-			Randomat.ActiveEvents[index]:SmallNotify("The '" .. Randomat.ActiveEvents[index].Title .. "' Event has ended.")
-			Randomat.ActiveEvents[index] = nil
-		end)
-	end
-	
-	Randomat.MapEvents[event.Id] = nil
-end
-
 if SERVER then
 	util.AddNetworkString("randomat_message")
 	util.AddNetworkString("randomat_clevent")
+
+	function Randomat:TriggerRandomEvent(ply)
+		if table.Count(Randomat.MapEvents) == 0 then Randomat.MapEvents = table.Copy(Randomat.Events) end
+		local events = Randomat.MapEvents
+		local index = eventIndex()
+
+		shuffleTable(events)
+
+		local event = table.Random(events)
+
+		Randomat.ActiveEvents[index] = event
+		Randomat.ActiveEvents[index].Ident = index
+		Randomat.ActiveEvents[index].Owner = ply
+
+		net.Start("randomat_clevent")
+		net.WriteString(Randomat.ActiveEvents[index].Id)
+		net.WriteString(index)
+		net.Broadcast()
+	
+		Randomat:EventNotify(Randomat.ActiveEvents[index].Title)
+
+		if Randomat.ActiveEvents[index]:Begin() ~= nil then -- Hinzugefügt auf grund der Clientside Events
+			Randomat.ActiveEvents[index]:Begin()
+		end
+
+		if Randomat.ActiveEvents[index].Time ~= nil then
+			timer.Create("Randomat" .. Randomat.ActiveEvents[index].Ident, Randomat.ActiveEvents[index].Time or 60, 1, function()
+				Randomat.ActiveEvents[index]:End()
+				Randomat.ActiveEvents[index]:SmallNotify("The '" .. Randomat.ActiveEvents[index].Title .. "' Event has ended.")
+				Randomat.ActiveEvents[index] = nil
+			end)
+		end
+
+		Randomat.MapEvents[event.Id] = nil
+	end
 	
 	function Randomat:EventNotify(title)
 		net.Start("randomat_message")
@@ -96,15 +97,24 @@ end
 if CLIENT then
 	net.Receive("randomat_clevent", function()
 		local id = net.ReadString()
+		local index = net.ReadString()
 	
 		if not Randomat:exists(id) then
 			return
 		end
 
-		/**
-		 * Funktioniert so noch nich müsste auf ActiveEvents zugerifen, bekommt der client aktuell aber nich mitgeteilt, ActiveEvents muss an den client gesendet werden
-		 */
-		Randomat.Events[id]:Begin()
+		Randomat.ActiveEvents[index] = Randomat.Events[id]
+		Randomat.ActiveEvents[index].Ident = index
+
+		Randomat.ActiveEvents[index]:Begin()
+
+		if Randomat.ActiveEvents[index].Time ~= nil then
+			timer.Create("Randomat" .. Randomat.ActiveEvents[index].Ident, Randomat.ActiveEvents[index].Time or 60, 1, function()
+				Randomat.ActiveEvents[index]:End()
+				CLEventNotify("The '" .. Randomat.ActiveEvents[index].Title .. "' Event has ended.", false)
+				Randomat.ActiveEvents[index] = nil
+			end)
+		end
 	end)
 end
 
@@ -143,7 +153,7 @@ end
 
 if SERVER then
 	function randomat_meta:SmallNotify(msg, length, targ)
-		if !isnumber(length) then length = 0 end
+		if not isnumber(length) then length = 0 end
 		net.Start("randomat_message")
 		net.WriteBool(false)
 		net.WriteString(msg)
@@ -185,7 +195,7 @@ end
  * Override TTT Stuff
  */
 hook.Add("TTTEndRound", "RandomatEndRound", function()
-	if Randomat.ActiveEvents != {} then
+	if Randomat.ActiveEvents ~= {} then
 		for _, evt in pairs(Randomat.ActiveEvents) do
 			timer.Remove("Randomat" .. evt.Ident)
 			evt:End()
@@ -196,7 +206,7 @@ hook.Add("TTTEndRound", "RandomatEndRound", function()
 end)
 
 hook.Add("TTTPrepareRound", "RandomatEndRound", function()
-	if Randomat.ActiveEvents != {} then
+	if Randomat.ActiveEvents ~= {} then
 		for _, evt in pairs(Randomat.ActiveEvents) do
 			timer.Remove("Randomat" .. evt.Ident)
 			evt:End()

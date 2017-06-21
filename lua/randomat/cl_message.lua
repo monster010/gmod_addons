@@ -12,10 +12,15 @@ net.Receive("randomat_message", function()
 	local Big = net.ReadBool()
 	local msg = net.ReadString()
 	local length = net.ReadUInt(8)
+
+	CLEventNotify(msg, Big, length)
+end)
+
+function CLEventNotify(msg, big, length)
 	if length == 0 then length = 5 end
-
+	
 	local NotifyPanel = vgui.Create("DNotify")
-
+	
 	if Big then
 		surface.SetFont("RandomatHeader")
 	else
@@ -23,11 +28,11 @@ net.Receive("randomat_message", function()
 	end
 	NotifyPanel:SetSize(surface.GetTextSize(msg))
 	NotifyPanel:Center()
-
+	
 	local bg = vgui.Create("DPanel", NotifyPanel)
 	bg:SetBackgroundColor(Color(0, 0, 0, 200))
 	bg:Dock(FILL)
-
+	
 	local lbl = vgui.Create("DLabel", bg)
 	lbl:SetText(msg)
 	if Big then
@@ -38,12 +43,12 @@ net.Receive("randomat_message", function()
 	lbl:SetTextColor(Color(255, 200, 0))
 	lbl:SetWrap(true)
 	lbl:Dock(FILL)
-
+	
 	local w, h = lbl:GetSize()
 	local tw, th = lbl:GetTextSize()
-
+	
 	lbl:SetText(msg)
-
+	
 	NotifyPanel:AddItem(bg, 5)
 	surface.PlaySound("weapons/c4_initiate.wav")
-end)
+end

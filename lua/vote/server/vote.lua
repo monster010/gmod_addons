@@ -3,7 +3,6 @@
 function TTTGF.ReceiveVotes(len, sender)
   local target = net.ReadEntity()
   if target:GetNWInt("VoteCounter") < 3 and sender:GetCurrentVotes() >= 1 and sender:GetNWInt("UsedVotes",0) <= 0  then
-	  target:SetNWInt("VoteCounter", target:GetNWInt("VoteCounter") + 1)
 	  TTTGF.CalculateVotes(sender, target, sender)
   else
   	net.Start("TTTVoteFailure")
@@ -21,9 +20,10 @@ function TTTGF.SendVoteNotify(sender, target, totalvotes)
 end
 
 function TTTGF.CalculateVotes(ply, target, sender)
+  target:SetNWInt("VoteCounter", target:GetNWInt("VoteCounter") + 1)
   TTTGF.votebetters[target:SteamID()] = TTTGF.votebetters[target:SteamID()] or {}
   table.insert(TTTGF.votebetters[target:SteamID()], ply)
-  ply:SetNWInt("UsedVotes", ply:GetNWInt("UsedVotes") + 1 )
+  ply:SetNWInt("UsedVotes", ply:GetNWInt("UsedVotes",0) + 1 )
   if target:GetNWInt("VoteCounter",0) >= 3 then
     target:SetNWInt("VoteCounter", 3)
     for k,v in pairs(TTTGF.votebetters[target:SteamID()]) do
@@ -43,7 +43,7 @@ function TTTGF.ResetVotes(ply)
   ply:SetNWInt("UsedVotes", 0)
   ply:SetNWBool("TTTVotePunishment", false)
   -- if VoteEnabled() then
-    TTTGF.AnyTotems = true
+
     local totem = ply:GetNWEntity("Totem")
     if IsValid(totem) then
       totem:FakeDestroy()
@@ -76,7 +76,7 @@ function TTTGF.InitVote(ply)
     local currentdate = os.date("%d/%m/%Y",os.time())
     if ply:GetPData("vote_stored_date") == nil then
       TTTGF.SetDate(ply , currentdate)
-      ply:ResetVotes()
+      TTTGF.ResetVotes(ply)
       OpenChangelogMenu(ply)
     end
     TTTGF.InitVoteviaDate(ply, ply:GetPData("vote_stored_date"))
@@ -87,7 +87,7 @@ function TTTGF.InitVoteviaDate(ply, date)
   local currentdate = os.date("%d/%m/%Y",os.time())
   if date != currentdate then
     TTTGF.SetDate(ply , currentdate)
-    ply:ResetVotes()
+    TTTGF.ResetVotes(ply)
     OpenChangelogMenu(ply)
   else
     ply:SetVotes(ply:GetPData("vote_stored"))
@@ -103,6 +103,7 @@ function TTTGF.ResetVoteforEveryOne( ply, cmd, args )
     for k,v in pairs(player.GetAll()) do
       TTTGF.ResetVotes(v)
     end
+    TTTGF.AnyTotems = true
     net.Start("TTTResetVote")
     net.WriteBool(true)
     net.Broadcast()

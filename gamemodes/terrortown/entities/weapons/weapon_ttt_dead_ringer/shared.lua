@@ -116,12 +116,15 @@ function SWEP:Deploy()
   return self.BaseClass.Deploy(self)
 end
 -----------------------------------
-function DRThink()
-  if SERVER then
+
+
+if SERVER then
+
+  local function DRThink()
     for _, ply in pairs(player.GetAll()) do
       if ply:IsValid() and !ply:IsFakeDead() and ply:GetNWInt("DRStatus") == 4 then
         if ply:GetNWInt("DRCharge") < 8 then
-          ply.drtimer = ply.drtimer or CurTime() + 0.1
+          ply.drtimer = ply.drtimer or CurTime() + 4
           if CurTime() > ply.drtimer then
             ply.drtimer = CurTime() + 4
             ply:SetNWInt("DRCharge", ply:GetNWInt("DRCharge") + 1)
@@ -132,11 +135,11 @@ function DRThink()
           net.Send(ply)
         end
       elseif ply:IsValid() and ply:IsFakeDead() and ply:GetNWInt("DRStatus") == 3 then
-        for _, v in pairs(ply:GetWeapons()) do
-          v:SetNextPrimaryFire(CurTime() + 0.2)
-          v:SetNextSecondaryFire(CurTime() + 0.2)
-        end
-        ply:DrawWorldModel(false)
+		ply:DrawWorldModel(false)
+        for k,v in pairs(ply:GetWeapons()) do
+					v:SetNextPrimaryFire(CurTime() + 0.2)
+					v:SetNextSecondaryFire(CurTime() + 0.2)
+		end
         if ply:GetNWInt("DRCharge") <= 8 and ply:GetNWInt("DRCharge") > 0 then
           ply.cltimer = ply.cltimer or CurTime() + 2
           if CurTime() > ply.cltimer then
@@ -149,10 +152,8 @@ function DRThink()
       end
     end
   end
-end
-hook.Add("Think", "DRThink", DRThink)
+  hook.Add("Think", "DRThink", DRThink)
 
-if SERVER then
   local function DROwnerGetsDamage(ent,dmginfo)
     if ent:IsPlayer() then
       local ply = ent
@@ -235,8 +236,6 @@ function SWEP:PrimaryAttack()
     if self.Owner:GetNWInt("DRCharge") < 8 then
       self.Owner:SetNWInt("DRStatus",4)
     end
-  else
-    return
   end
 end
 
@@ -244,8 +243,6 @@ function SWEP:SecondaryAttack()
   if !self.Owner:IsFakeDead() and self.Owner:GetNWInt("DRStatus") != 2 then
     self.Owner:SetNWInt("DRStatus",2)
     self:EmitSound("buttons/blip1.wav", 100, 73, 1, CHAN_AUTO)
-  else
-    return
   end
 end
 
@@ -314,7 +311,7 @@ if SERVER then
     ---------------------------
     --------"corpse"-------
     ---------------------------
-    -- this is time to make our corpse
+    -- this is the time to make our corpse
 
     -- create the ragdoll
     local rag = ents.Create("prop_ragdoll")
@@ -413,11 +410,10 @@ if SERVER then
     util.Effect( "druncloak", effectdata, true ,true )
 
     for _, rag in pairs(ents.GetAll()) do
-      if rag:GetClass() == "prop_ragdoll" and rag:GetOwner() == self or rag.sid == self:SteamID() or rag.uqid == self:UniqueID() then
+      if rag:GetClass() == "prop_ragdoll" and (rag:GetOwner() == self or rag.sid == self:SteamID() or rag.uqid == self:UniqueID()) then
         rag:Remove()
       end
     end
-
   end
 end
 if (CLIENT) then

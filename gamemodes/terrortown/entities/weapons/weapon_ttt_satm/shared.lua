@@ -139,7 +139,7 @@ function SWEP:PrimaryAttack()
 				timer.Create("ResetSATM", satmduration:GetInt() * self.timescale, 1, ResetTimeScale)
 			end
 		elseif self.satmmode == 4 then
-			local omin, omax = owner:GetHull()
+			local omin, omax = owner:GetHull() -- get bound
 			if !owner:OnGround() or checkPos(v, v:GetPos(), omin, omax) then
 				net.Start("SATMMessage")
 				net.WriteInt(20, 6)
@@ -150,7 +150,7 @@ function SWEP:PrimaryAttack()
 			local aliveplayers = {}
 
 			for k, v in pairs(player.GetAll()) do
-				local min, max = v:GetHull()
+				local min, max = v:GetHull() -- get bound
 				if v:IsTerror() and v != owner and !checkPos(v, v:GetPos(), min, max) then
 					table.insert(aliveplayers, v)
 				end

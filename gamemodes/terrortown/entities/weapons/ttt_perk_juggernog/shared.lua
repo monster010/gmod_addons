@@ -1,6 +1,7 @@
 if SERVER then
   AddCSLuaFile( "shared.lua" )
   util.AddNetworkString("JuggerBlurHUD")
+  util.AddNetworkString("DrinkingtheJuggernog")
   resource.AddFile("sound/perks/buy_jug.wav")
   resource.AddFile("materials/models/perk_bottle/c_perk_bottle_jugg.vmt")
 end
@@ -102,12 +103,6 @@ hook.Add("DoPlayerDeath","TTTJuggernogReset", function(pl)
       pl:SetNWBool("JuggernogActive",false)
     end
   end)
-
-hook.Add("EntityTakeDamage", "TTTJuggernogReduction", function(target, dmginfo)
-  if target:IsPlayer() and target:GetNWBool("JuggernogActive",false) and target:HasEquipmentItem(EQUIP_JUGGERNOG) and (dmginfo:IsBulletDamage() or dmginfo:IsExplosionDamage()) then
-    dmginfo:ScaleDamage(0.9)
-  end
-end)
 
 function SWEP:OnRemove()
   if CLIENT and IsValid(self.Owner) and self.Owner == LocalPlayer() and self.Owner:Alive() then

@@ -1,8 +1,9 @@
+--if TTT2 then return end
+
 if SERVER then
   AddCSLuaFile()
   resource.AddFile("materials/vgui/ttt/ic_staminup.vmt")
   resource.AddFile("materials/vgui/ttt/perks/hud_staminup.png")
-  util.AddNetworkString("DrinkingtheStaminup")
 end
 
 if CLIENT then
@@ -12,7 +13,19 @@ if CLIENT then
   local function getYCoordinate(currentPerkID)
     local amount, i, perk = 0, 1
     while (i < currentPerkID) do
-      perk = GetEquipmentItem(LocalPlayer():GetRole(), i)
+
+      local role = LocalPlayer():GetRole()
+
+      if role == ROLE_INNOCENT then --he gets it in a special way
+        if GetEquipmentItem(ROLE_TRAITOR, i) then
+          role = ROLE_TRAITOR -- Temp fix what if a perk is just for Detective
+        elseif GetEquipmentItem(ROLE_DETECTIVE, i) then
+          role = ROLE_DETECTIVE
+        end
+      end
+
+      perk = GetEquipmentItem(role, i)
+
       if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
         amount = amount + 1
       end
@@ -37,11 +50,23 @@ if CLIENT then
         surface.DrawTexturedRect(20, yCoordinate, 64, 64)
       end
     end)
-    LANG.AddToLanguage("english", "item_staminup_name", "Stamin-Up")
-    LANG.AddToLanguage("english", "item_staminup_desc", "Stamin-Up Perk.\nAutomatically drinks perk to greatly increase\nwalk speed!")
 end
 
 EQUIP_STAMINUP = (GenerateNewEquipmentID and GenerateNewEquipmentID() ) or 256
+
+local Staminup = {
+	avoidTTT2 = true,
+	id = EQUIP_STAMINUP,
+	loadout = false,
+	type = "item_passive",
+	material = "vgui/ttt/ic_staminup",
+	name = "Stamin-Up",
+	desc = "Stamin-Up Perk.\nAutomatically drinks perk to greatly increase\nwalk speed!",
+	hud = true
+}
+
+table.insert(EquipmentItems[ROLE_DETECTIVE], Staminup)
+table.insert(EquipmentItems[ROLE_TRAITOR], Staminup)
 
 if SERVER then
 

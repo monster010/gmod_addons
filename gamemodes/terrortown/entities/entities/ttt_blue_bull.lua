@@ -1,3 +1,5 @@
+--if TTT2 then return end
+
 if SERVER then
 	AddCSLuaFile()
 	resource.AddWorkshop("653258161")
@@ -6,6 +8,7 @@ end
 EQUIP_BLUE_BULL = (GenerateNewEquipmentID and GenerateNewEquipmentID() ) or 16
 
 local bluebull = {
+	avoidTTT2 = true,
 	id = EQUIP_BLUE_BULL,
 	loadout = false,
 	type = "item_passive",
@@ -90,14 +93,15 @@ end )
 if SERVER then
 
 	hook.Add("TTTOrderedEquipment", "TTTBlueBull3", function(ply, equipment, is_item)
-		 if is_item == EQUIP_BLUE_BULL then
+		if is_item and equipment == EQUIP_BLUE_BULL then
 			ply:SetJumpPower(400)-- bit more then twice as much
 			ply:SetNWInt("MaxJumpLevel", 2)
 			ply:SetNWInt("JumpLevel", 0)
+
 			ply.BoughtBlueBull = true
 		end
-	end )
-	
+	end)
+
 	hook.Add("EntityTakeDamage", "BlueBullFallDamage", function(ent, dmg)
 		if IsValid(ent) and ent:IsPlayer() and ent:HasEquipmentItem(EQUIP_BLUE_BULL) and dmg:IsFallDamage() then
 			dmg:ScaleDamage(0.75)  -- reduce the fall damage a bit
@@ -127,19 +131,31 @@ if SERVER then
 	else
 		-- feel for to use this function for your own perk, but please credit Zaratusa
 		-- your perk needs a "hud = true" in the table, to work properly
-		local defaultY = ScrH() / 2 + 20
-		local function getYCoordinate(currentPerkID)
-			local amount, i, perk = 0, 1
-			while (i < currentPerkID) do
-				perk = GetEquipmentItem(LocalPlayer():GetRole(), i)
-				if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
-					amount = amount + 1
-				end
-				i = i * 2
-			end
+		  local defaultY = ScrH() / 2 + 20
+		  local function getYCoordinate(currentPerkID)
+		    local amount, i, perk = 0, 1
+		    while (i < currentPerkID) do
 
-			return defaultY - 80 * amount
-		end
+		      local role = LocalPlayer():GetRole()
+
+		      if role == ROLE_INNOCENT then --he gets it in a special way
+		        if GetEquipmentItem(ROLE_TRAITOR, i) then
+		          role = ROLE_TRAITOR -- Temp fix what if a perk is just for Detective
+		        elseif GetEquipmentItem(ROLE_DETECTIVE, i) then
+		          role = ROLE_DETECTIVE
+		        end
+		      end
+
+		      perk = GetEquipmentItem(role, i)
+
+		      if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
+		        amount = amount + 1
+		      end
+		      i = i * 2
+		    end
+
+		    return defaultY - 80 * amount
+		  end
 
 		local yCoordinate = defaultY
 		-- best performance, but the has about 0.5 seconds delay to the HasEquipmentItem() function

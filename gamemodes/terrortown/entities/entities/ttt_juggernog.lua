@@ -1,9 +1,9 @@
+--if TTT2 then return end
+
 if SERVER then
   AddCSLuaFile()
-  resource.AddWorkshop("842302491")
   resource.AddFile("materials/vgui/ttt/ic_juggernog.vmt")
   resource.AddFile("materials/vgui/ttt/perks/hud_juggernog.png")
-  util.AddNetworkString("DrinkingtheJuggernog")
 end
 
 if CLIENT then
@@ -13,7 +13,19 @@ if CLIENT then
   local function getYCoordinate(currentPerkID)
     local amount, i, perk = 0, 1
     while (i < currentPerkID) do
-      perk = GetEquipmentItem(LocalPlayer():GetRole(), i)
+
+      local role = LocalPlayer():GetRole()
+
+      if role == ROLE_INNOCENT then --he gets it in a special way
+        if GetEquipmentItem(ROLE_TRAITOR, i) then
+          role = ROLE_TRAITOR -- Temp fix what if a perk is just for Detective
+        elseif GetEquipmentItem(ROLE_DETECTIVE, i) then
+          role = ROLE_DETECTIVE
+        end
+      end
+
+      perk = GetEquipmentItem(role, i)
+
       if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
         amount = amount + 1
       end
@@ -38,11 +50,23 @@ if CLIENT then
         surface.DrawTexturedRect(20, yCoordinate, 64, 64)
       end
     end)
-    LANG.AddToLanguage("english", "item_juggernog_name", "Juggernog")
-    LANG.AddToLanguage("english", "item_juggernog_desc", "Juggernog Perk.\nAutomatically drinks perk to get \nthe maximum health avaible!")
 end
 
 EQUIP_JUGGERNOG = (GenerateNewEquipmentID and GenerateNewEquipmentID() ) or 64
+
+local Juggernog = {
+	avoidTTT2 = true,
+	id = EQUIP_JUGGERNOG,
+	loadout = false,
+	type = "item_passive",
+	material = "vgui/ttt/ic_juggernog",
+	name = "Juggernog",
+	desc = "Juggernog Perk.\nAutomatically drinks perk to get \nthe maximum health avaible!",
+	hud = true
+}
+
+table.insert(EquipmentItems[ROLE_DETECTIVE], Juggernog)
+table.insert(EquipmentItems[ROLE_TRAITOR], Juggernog)
 
 if SERVER then
 

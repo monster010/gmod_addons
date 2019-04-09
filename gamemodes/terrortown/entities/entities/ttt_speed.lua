@@ -1,8 +1,9 @@
+--if TTT2 then return end
+
 if SERVER then
   AddCSLuaFile()
   resource.AddFile("materials/vgui/ttt/ic_speed.vmt")
   resource.AddFile("materials/vgui/ttt/perks/hud_speed.png")
-  util.AddNetworkString("DrinkingtheSpeed")
 end
 
 if CLIENT then
@@ -12,7 +13,19 @@ if CLIENT then
   local function getYCoordinate(currentPerkID)
     local amount, i, perk = 0, 1
     while (i < currentPerkID) do
-      perk = GetEquipmentItem(LocalPlayer():GetRole(), i)
+
+      local role = LocalPlayer():GetRole()
+
+      if role == ROLE_INNOCENT then --he gets it in a special way
+        if GetEquipmentItem(ROLE_TRAITOR, i) then
+          role = ROLE_TRAITOR -- Temp fix what if a perk is just for Detective
+        elseif GetEquipmentItem(ROLE_DETECTIVE, i) then
+          role = ROLE_DETECTIVE
+        end
+      end
+
+      perk = GetEquipmentItem(role, i)
+
       if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
         amount = amount + 1
       end
@@ -42,6 +55,20 @@ if CLIENT then
 end
 
 EQUIP_SPEED = (GenerateNewEquipmentID and GenerateNewEquipmentID() ) or 512
+
+local Speed = {
+	avoidTTT2 = true,
+	id = EQUIP_SPEED,
+	loadout = false,
+	type = "item_passive",
+	material = "vgui/ttt/ic_speed",
+	name = "Speed Cola Perk.",
+	desc = "Speed Cola Perk.\nAutomatically drinks perk to get \ndouble the reload speed.",
+	hud = true
+}
+
+table.insert(EquipmentItems[ROLE_DETECTIVE], Speed)
+table.insert(EquipmentItems[ROLE_TRAITOR], Speed)
 
 if SERVER then
 

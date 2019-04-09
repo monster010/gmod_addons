@@ -7,26 +7,42 @@ if SERVER then
 	resource.AddFile("materials/VGUI/ttt/slowmotion_icon.vtf")
 	resource.AddFile("materials/vgui/ttt/perks/hud_slowmo.png")
 	util.AddNetworkString("SlowMotionSound")
-	util.AddNetworkString("SM_Ask")
+	util.AddNetworkString("SM_Ask2")
 	util.AddNetworkString("SMReload")
 end
 
 if CLIENT then
 	-- feel for to use this function for your own perk, but please credit Zaratusa
 	-- your perk needs a "hud = true" in the table, to work properly
-	local defaultY = ScrH() / 2 + 20
-	local function getYCoordinate(currentPerkID)
-		local amount, i, perk = 0, 1
-		while (i < currentPerkID) do
-			perk = GetEquipmentItem(LocalPlayer():GetRole(), i)
-			if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
-				amount = amount + 1
-			end
-			i = i * 2
-		end
+	  local defaultY = ScrH() / 2 + 20
+	  local function getYCoordinate(currentPerkID)
+	    local amount, i, perk = 0, 1
+	    while (i < currentPerkID) do
 
-		return defaultY - 80 * amount
-	end
+		local role = LocalPlayer():GetRole()
+		if role == ROLE_INNOCENT then
+			role = ROLE_TRAITOR -- Temp fix what if a perk is just for Detective
+		end
+		perk = GetEquipmentItem(role, i)
+
+	      if role == ROLE_INNOCENT then --he gets it in a special way
+	        if GetEquipmentItem(ROLE_TRAITOR, i).id then
+	          role = ROLE_TRAITOR -- Temp fix what if a perk is just for Detective
+	        elseif GetEquipmentItem(ROLE_DETECTIVE, i).id then
+	          role = ROLE_DETECTIVE
+	        end
+	      end
+
+	      perk = GetEquipmentItem(role, i)
+
+	      if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
+	        amount = amount + 1
+	      end
+	      i = i * 2
+	    end
+
+	    return defaultY - 80 * amount
+	  end
 
 	local yCoordinate = defaultY
 	-- best performance, but the has about 0.5 seconds delay to the HasEquipmentItem() function
@@ -46,8 +62,13 @@ if CLIENT then
 		end)
 
 	local function askSM()
-		net.Start("SM_Ask")
-		net.SendToServer()
+		if not TTT2 then
+			net.Start("SM_Ask2")
+			net.SendToServer()
+		else
+			net.Start("SM_Ask")
+			net.SendToServer()
+		end
 	end
 
 	concommand.Add("SlowMotion", askSM)
@@ -70,6 +91,7 @@ end
 EQUIP_SM = (GenerateNewEquipmentID and GenerateNewEquipmentID() ) or 4096
 
 local SlowMotion = {
+	avoidTTT2 = true,
 	id = EQUIP_SM,
 	loadout = false,
 	type = "item_active",
@@ -79,20 +101,13 @@ local SlowMotion = {
 	hud = true
 }
 
-local detectiveCanUse = CreateConVar("ttt_slowmotion_det", 0, {FCVAR_SERVER_CAN_EXECUTE, FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Should the Detective be able to use the SlowMotion .")
-local traitorCanUse = CreateConVar("ttt_slowmotion_tr", 1, {FCVAR_SERVER_CAN_EXECUTE, FCVAR_ARCHIVE, FCVAR_REPLICATED}, "Should the Traitor be able to use the SlowMotion.")
-local smduration = CreateConVar("ttt_slowmotion_duration", 1.5, {FCVAR_SERVER_CAN_EXECUTE, FCVAR_ARCHIVE, FCVAR_REPLICATED}, "How long should the slowmotion last?")
-
-if (detectiveCanUse:GetBool()) then
-	table.insert(EquipmentItems[ROLE_DETECTIVE], SlowMotion)
-end
-if (traitorCanUse:GetBool()) then
-	table.insert(EquipmentItems[ROLE_TRAITOR], SlowMotion)
-end
+table.insert(EquipmentItems[ROLE_TRAITOR], SlowMotion)
 
 if SERVER then
 
-
+	local timescale = 0.3
+	local cooldown = 45
+	local duration = 5
 	local plymeta = FindMetaTable("Player")
 	local SlowMotion_active = false
 
@@ -102,48 +117,60 @@ if SERVER then
 		net.Broadcast()
 	end
 
-	function plymeta:EnableSlowMotion()
+	function plymeta:SlowMotion()
 		if SlowMotion_active then return end
-		if self:HasEquipmentItem(EQUIP_SM) and !self:GetNWBool("SlowMotionUsed", false) then
-			self:SetNWBool("SlowMotionUsed", true)
+		if self:HasEquipmentItem(EQUIP_SM) and !self.SlowMotionused then
+			self.SlowMotionused = true
 		    game.SetTimeScale(0.3)
 			SlowMotion_active = true
 			SlowMotionSound(true)
-			self:SMReset()
+			self:SReset()
 		end
 	end
 
-	function plymeta:SMReset()
-		local duration = GetConVar("ttt_slowmotion_duration"):GetFloat()
-		timer.Create("SMReset" .. self:EntIndex(), duration ,1, function()
-				if self:IsValid() and self:GetNWBool("SlowMotionUsed") then
+	function plymeta:SReset()
+		local duration = 3
+		timer.Create("SMReset" .. self:EntIndex(), duration * timescale ,1, function()
+				if self:IsValid() and self.SlowMotionused then
 					game.SetTimeScale(1)
 					SlowMotion_active = false
 					SlowMotionSound(false)
 					if self:IsTerror() then
-						self:ReloadSM()
+						self:ReloadS()
 					end
 				end
 			end)
 	end
-	function plymeta:ReloadSM()
-		timer.Create("SMReload" .. self:EntIndex(), 20 ,1, function()
+	function plymeta:ReloadS()
+		timer.Create("SMReload" .. self:EntIndex(), 45 ,1, function()
 				if self:IsValid() and self:IsTerror() then
 					net.Start("SMReload")
 					net.Send(self)
-					self:SetNWBool("SlowMotionUsed", false)
+					self.SlowMotionused = false
 				end
 			end)
 	end
 
-	net.Receive("SM_Ask", function(len,ply)
-		ply:EnableSlowMotion()
+	net.Receive("SM_Ask2", function(len,ply)
+		ply:SlowMotion()
 	end)
 
 	hook.Add("TTTPrepareRound", "BeginRoundSM", function()
 		for k,v in pairs(player.GetAll()) do
-			v:SetNWBool("SlowMotionUsed", false)
-			timer.Remove("SMReset" .. v:EntIndex())
+			v.SlowMotionused = false
+			if timer.Exists("SMReset" .. v:EntIndex()) then
+				game.SetTimeScale(1)
+
+				SlowMotion_active = false
+
+				SlowMotionSound(false)
+
+				if v:IsTerror() then
+					v:ReloadS()
+				end
+
+				timer.Remove("SMReset" .. v:EntIndex())
+			end
 			timer.Remove("SMReload" .. v:EntIndex())
 		end
 	end)

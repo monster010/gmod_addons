@@ -1,8 +1,9 @@
+--if TTT2 then return end
+
 if SERVER then
   AddCSLuaFile()
   resource.AddFile("materials/vgui/ttt/ic_phd.vmt")
   resource.AddFile("materials/vgui/ttt/perks/hud_phd.png")
-  util.AddNetworkString("DrinkingthePHD")
 end
 
 if CLIENT then
@@ -12,7 +13,19 @@ if CLIENT then
   local function getYCoordinate(currentPerkID)
     local amount, i, perk = 0, 1
     while (i < currentPerkID) do
-      perk = GetEquipmentItem(LocalPlayer():GetRole(), i)
+
+      local role = LocalPlayer():GetRole()
+
+      if role == ROLE_INNOCENT then --he gets it in a special way
+        if GetEquipmentItem(ROLE_TRAITOR, i) then
+          role = ROLE_TRAITOR -- Temp fix what if a perk is just for Detective
+        elseif GetEquipmentItem(ROLE_DETECTIVE, i) then
+          role = ROLE_DETECTIVE
+        end
+      end
+
+      perk = GetEquipmentItem(role, i)
+
       if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
         amount = amount + 1
       end
@@ -37,12 +50,23 @@ if CLIENT then
         surface.DrawTexturedRect(20, yCoordinate, 64, 64)
       end
     end)
-
-    LANG.AddToLanguage("english", "item_phd_name", "PHD Flopper")
-    LANG.AddToLanguage("english", "item_phd_desc", "PHD Flopper Perk.\nAutomatically drinks perk to become \nimmune to fall damage,\nexplosion damage, and create an explosion\nwhere you land.")
 end
 
 EQUIP_PHD = (GenerateNewEquipmentID and GenerateNewEquipmentID() ) or 128
+
+local PHD = {
+	avoidTTT2 = true,
+	id = EQUIP_PHD,
+	loadout = false,
+	type = "item_passive",
+	material = "vgui/ttt/ic_phd",
+	name = "PHD Flopper Perk.",
+	desc = "PHD Flopper Perk.\nAutomatically drinks perk to become \nimmune to fall damage,\nexplosion damage, and create an explosion\nwhere you land.",
+	hud = true
+}
+
+table.insert(EquipmentItems[ROLE_DETECTIVE], PHD)
+table.insert(EquipmentItems[ROLE_TRAITOR], PHD)
 
 if SERVER then
 

@@ -10,7 +10,7 @@ else
   SWEP.ViewModelFOV=70
   SWEP.ViewModelFlip=false
 
-  SWEP.Icon="VGUI/ttt/icon_homebat"
+  SWEP.Icon="VGUI/ttt/icon_homerun_bat.png"
   SWEP.EquipMenuData={
     type="Melee Weapon",
     desc="Left click to hit a home run!\nHas 3 uses.\nYou will run 25% faster with it in your Hands."
@@ -190,9 +190,13 @@ if CLIENT then
     end)
 end
 
-hook.Add("TTTPlayerSpeedModifier", "HomebatSpeed" , function(ply)
+hook.Add("TTTPlayerSpeedModifier", "HomebatSpeed" , function(ply, _, _, noLag )
     local wep=ply:GetActiveWeapon()
     if wep and IsValid(wep) and wep:GetClass()=="weapon_ttt_homebat" then
-      return 1.25
+      if TTT2 then
+        noLag[1] = noLag[1] * 1.25
+      else
+        return 1.25
+      end
     end
 end )

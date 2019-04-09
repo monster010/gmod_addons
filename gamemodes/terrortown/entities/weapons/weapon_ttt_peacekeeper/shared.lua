@@ -104,7 +104,7 @@ local function IsInFOV( ply, target )
 				return true
 			end,
 			mask = MASK_SHOT_HULL,
-			mins=kmins, 
+			mins=kmins,
 			maxs=kmaxs
 		})
 		if !tr.Entity:IsPlayer() then
@@ -188,14 +188,9 @@ if SERVER then
 						continue
 					end
 					if !wasinfov and IsInFOV(owner, ply) then
-						if (owner:GetRole() == ROLE_INNOCENT or owner:GetRole() == ROLE_DETECTIVE or (owner.GetGood and owner:GetGood())) 
-							or (owner:IsTraitor() and !ply:IsTraitor() and ((ply.IsEvil and !ply:IsEvil()) or !ply.IsEvil))
-							or (owner:IsSidekick() and !ply:IsSidekick() and ply:GetSubRole() != ROLE_JESTER)
-							or (owner:IsSidekick() and !ply:IsSidekick() and ply:GetRole() != ROLE_JACKAL)
-							or (owner.IsEvil and owner:IsEvil() and !ply:IsEvil())
-							or (owner.IsNeutral and owner:IsNeutral() and !ply:IsNeutral()) then
-								table.insert(owner.highnoontargets, ply)
-								ply:SetNWBool("HighNoonFOV" .. self:EntIndex(), true)
+						if owner:GetRole() == ROLE_INNOCENT or owner:GetRole() == ROLE_DETECTIVE or (owner:IsTraitor() and !ply:IsTraitor()) then
+							table.insert(owner.highnoontargets, ply)
+							ply:SetNWBool("HighNoonFOV" .. self:EntIndex(), true)
 						end
 					end
 				end
@@ -234,7 +229,7 @@ if SERVER then
 	function SWEP:FireHighNoonBullet()
 		local owner = self.Owner
 
-		
+
 		local ply = owner.highnoontargets[math.random(1,#owner.highnoontargets)]
 		local targetPos = ply:Crouching() and ply:GetPos() + Vector(0,0,25) or ply:GetPos() + Vector(0,0,50)
 		local dir = (targetPos - owner:GetShootPos() ):GetNormalized()
@@ -432,10 +427,14 @@ elseif CLIENT then
 		end)
 end
 
-local function HighNoonSpeed(ply)
+local function HighNoonSpeed(ply, _, _, noLag )
 	local w = ply:GetActiveWeapon()
 	if w and IsValid(w) and w:GetClass() == "weapon_ttt_peacekeeper" and w:HighNoonActive() then
-		return 0.2
+		if TTT2 then
+			noLag[1] = noLag[1] * 0.2
+		else
+			return 0.2
+		end
 	end
 end
 

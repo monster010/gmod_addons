@@ -1,3 +1,5 @@
+--if TTT2 then return end
+
 if SERVER then
 	AddCSLuaFile()
 	resource.AddFile("vgui/ttt/icon_tlh.vmt")
@@ -36,19 +38,31 @@ if CLIENT then
 		end)
 	-- feel for to use this function for your own perk, but please credit Zaratusa
 	-- your perk needs a "hud = true" in the table, to work properly
-	local defaultY = ScrH() / 2 + 20
-	local function getYCoordinate(currentPerkID)
-		local amount, i, perk = 0, 1
-		while (i < currentPerkID) do
-			perk = GetEquipmentItem(LocalPlayer():GetRole(), i)
-			if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
-				amount = amount + 1
-			end
-			i = i * 2
-		end
+	  local defaultY = ScrH() / 2 + 20
+	  local function getYCoordinate(currentPerkID)
+	    local amount, i, perk = 0, 1
+	    while (i < currentPerkID) do
 
-		return defaultY - 80 * amount
-	end
+	      local role = LocalPlayer():GetRole()
+
+	      if role == ROLE_INNOCENT then --he gets it in a special way
+	        if GetEquipmentItem(ROLE_TRAITOR, i) then
+	          role = ROLE_TRAITOR -- Temp fix what if a perk is just for Detective
+	        elseif GetEquipmentItem(ROLE_DETECTIVE, i) then
+	          role = ROLE_DETECTIVE
+	        end
+	      end
+
+	      perk = GetEquipmentItem(role, i)
+
+	      if (istable(perk) and perk.hud and LocalPlayer():HasEquipmentItem(perk.id)) then
+	        amount = amount + 1
+	      end
+	      i = i * 2
+	    end
+
+	    return defaultY - 80 * amount
+	  end
 
 	local yCoordinate = defaultY
 	-- best performance, but the has about 0.5 seconds delay to the HasEquipmentItem() function
@@ -97,8 +111,13 @@ if CLIENT then
 	hook.Add("HUDPaint", "TLHHUD", TLHHUD)
 
 	local function askTLH()
-		net.Start("TLH_Ask")
-		net.SendToServer()
+		if not TTT2 then
+			net.Start("TLH_Ask")
+			net.SendToServer()
+		else
+			net.Start("TLH_Ask2")
+			net.SendToServer()
+		end
 	end
 
 	concommand.Add("thelittlehelper", askTLH)
@@ -107,6 +126,7 @@ end
 EQUIP_TLH = (GenerateNewEquipmentID and GenerateNewEquipmentID() ) or 32
 
 local TheLittleHelper = {
+	avoidTTT2 = true,
 	id = EQUIP_TLH,
 	loadout = false,
 	type = "item_active",
@@ -140,7 +160,7 @@ hook.Add("TTTOrderedEquipment", "TTTTLH", function(ply, id, is_item)
 	end)
 
 if SERVER then
-	function tlhthink()
+	local function tlhthink()
 		for key,ply in pairs(player.GetAll()) do
 			if ply.HasTLH then
 				if !ply.TLHInvincible and !ply.TLH then
@@ -195,7 +215,7 @@ if SERVER then
 				self:SetNWInt("TLHShield", 0)
 			end
 	end
-	function TLHOwnerGetsDamage(ent,dmginfo)
+	local function TLHOwnerGetsDamage(ent,dmginfo)
 		if ent:IsValid() and ent:IsPlayer() and ent.HasTLH and ent.TLHInvincible then
 			ent:SetNWInt("TLHShield", ent:GetNWInt("TLHShield",0) - math.Round(dmginfo:GetDamage()))
 			if ent:GetNWInt("TLHShield",0) <= 0 then
